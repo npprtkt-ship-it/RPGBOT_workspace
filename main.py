@@ -1069,5 +1069,68 @@ async def unequip_title(ctx: commands.Context):
     )
     await ctx.send(embed=embed)
 
+@bot.command(name="raid_info")
+@check_ban()
+async def raid_info(ctx: commands.Context):
+    """レイドボスの状態を確認"""
+    user = ctx.author
+    player = await get_player(user.id)
+
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+
+    player_distance = player.get("distance", 0)
+
+    raid_bosses_info = []
+    for boss_id, boss_data in game.RAID_BOSSES.items():
+        if boss_data["distance"] <= player_distance + 100:
+            raid_boss_db = await db.get_raid_boss(boss_data["id"])
+
+            if raid_boss_db:
+                current_hp = raid_boss_db.get("current_hp", boss_data["hp"])
+                max_hp = boss_data["hp"]
+                status = "撃破済み" if current_hp <= 0 else f"HP: {current_hp}/{max_hp}"
+                
+                contributions = await db.get_raid_contributions(raid_boss_db["id"])
+                user_contribution = await db.get_user_raid_contribution(raid_boss_db["id"], user.id)
+                user_damage = user_contribution.get("damage_dealt", 0) if user_contribution else 0
+
+                raid_bosses_info.append({
+                    "name": boss_data["name"],
+                    "distance": boss_data["distance"],
+                    "status": status,
+                    "participants": len(contributions),
+                    "user_damage": user_damage
+                })
+            else:
+                raid_bosses_info.append({
+                    "name": boss_data["name"],
+                    "distance": boss_data["distance"],
+                    "status": "未出現",
+                    "participants": 0,
+                    "user_damage": 0
+                })
+
+    if not raid_bosses_info:
+        await ctx.send("現在確認できるレイドボスはありません。")
+        return
+
+    embed = discord.Embed(
+        title="🐉 レイドボス情報",
+        description="現在のレイドボス状態",
+        color=discord.Color.blue()
+    )
+    for boss in raid_bosses_info:
+        value = f"距離: {boss['distance']}m\n状態: {boss['status']}\n参加者: {boss['participants']}人"
+        if boss['user_damage'] > 0:
+            value += f"\nあなたの貢献: {boss['user_damage']}ダメージ"
+
+        embed.add_field(
+            name=f"{boss['name']}",
+            value=value,
+            inline=False
+        )
+    await ctx.send(embed=embed)
 if __name__ == "__main__":
     asyncio.run(main())
