@@ -1619,30 +1619,10 @@ class BossBattleView(View):
                 await interaction.response.defer()
                 return
 
-            # ==============================
-            # ボスの行動決定（確率ベース - ボス版）
-            # ==============================
-            boss_action = game.get_monster_action(self.boss["name"], is_boss=True)
-            
-            if boss_action["action"] == "skill":
-                # スキル使用
-                skill = boss_action["skill"]
-                boss_base_dmg = max(0, self.boss["atk"] + random.randint(-3, 3) - self.player["defense"])
-                enemy_dmg = game.calculate_skill_damage(boss_base_dmg, skill)
-                self.player["hp"] -= enemy_dmg
-                self.player["hp"] = max(0, self.player["hp"])
-                text += f"\n{self.boss['name']}の**{skill['name']}**！ {enemy_dmg} のダメージを受けた！\n💭 _{skill['description']}_"
-            
-            elif boss_action["action"] == "attack":
-                # 通常攻撃
-                enemy_dmg = max(0, self.boss["atk"] + random.randint(-3, 3) - self.player["defense"])
-                self.player["hp"] -= enemy_dmg
-                self.player["hp"] = max(0, self.player["hp"])
-                text += f"\nボスの反撃！ {enemy_dmg} のダメージを受けた！"
-            
-            elif boss_action["action"] == "wait":
-                # 待機
-                text += f"\n{self.boss['name']}は力を溜めている…\n『今のうちに攻めるんだ！』"
+            enemy_dmg = max(0, self.boss["atk"] + random.randint(-3, 3) - self.player["defense"])
+            self.player["hp"] -= enemy_dmg
+            self.player["hp"] = max(0, self.player["hp"])
+            text += f"\nボスの反撃！ {enemy_dmg} のダメージを受けた！"
 
             if self.player["hp"] <= 0:
                 # 【重要】先にインタラクションに応答
@@ -1781,85 +1761,29 @@ class BossBattleView(View):
             await interaction.response.defer()
             return
 
-        # ==============================
-        # ボスの行動決定（確率ベース - ボス版）
-        # ==============================
-        boss_action = game.get_monster_action(self.boss["name"], is_boss=True)
-        
-        if boss_action["action"] == "skill":
-            # スキル使用
-            skill = boss_action["skill"]
-            boss_base_dmg = max(0, self.boss["atk"] + random.randint(-3, 3) - self.player["defense"])
-            skill_dmg = game.calculate_skill_damage(boss_base_dmg, skill)
-            
-            # 防具効果を適用
-            armor_ability = equipment_bonus.get("armor_ability", "")
-            armor_result = game.apply_armor_effects(
-                skill_dmg, 
-                armor_ability, 
-                self.player["hp"], 
-                self.player.get("max_hp", 50),
-                skill_dmg,
-                self.boss.get("attribute", "none")
-            )
-            
-            if armor_result["evaded"]:
-                text += f"\n{self.boss['name']}の**{skill['name']}**！ {armor_result['effect_text']}"
-            else:
-                enemy_dmg = armor_result["damage"]
-                self.player["hp"] -= enemy_dmg
-                self.player["hp"] = max(0, self.player["hp"])
-                text += f"\n{self.boss['name']}の**{skill['name']}**！ {enemy_dmg} のダメージを受けた！\n💭 _{skill['description']}_"
-                if armor_result["effect_text"]:
-                    text += f"\n{armor_result['effect_text']}"
-        
-        elif boss_action["action"] == "attack":
-            # 通常攻撃
-            enemy_base_dmg = max(0, self.boss["atk"] + random.randint(-3, 3) - self.player["defense"])
-            
-            # 防具効果を適用
-            armor_ability = equipment_bonus.get("armor_ability", "")
-            armor_result = game.apply_armor_effects(
-                enemy_base_dmg, 
-                armor_ability, 
-                self.player["hp"], 
-                self.player.get("max_hp", 50),
-                enemy_base_dmg,
-                self.boss.get("attribute", "none")
-            )
-            
-            if armor_result["evaded"]:
-                text += f"\nボスの攻撃！ {armor_result['effect_text']}"
-            else:
-                enemy_dmg = armor_result["damage"]
-                self.player["hp"] -= enemy_dmg
-                self.player["hp"] = max(0, self.player["hp"])
-                text += f"\nボスの反撃！ {enemy_dmg} のダメージを受けた！"
-                if armor_result["effect_text"]:
-                    text += f"\n{armor_result['effect_text']}"
-        
-        elif boss_action["action"] == "wait":
-            # 待機
-            text += f"\n{self.boss['name']}は力を溜めている…\n『今のうちに攻めるんだ！』"
-            armor_result = {
-                "evaded": True,
-                "damage": 0,
-                "counter_damage": 0,
-                "reflect_damage": 0,
-                "hp_regen": 0,
-                "effect_text": ""
-            }
-        
-        # armor_resultが定義されていない場合のデフォルト値
-        if boss_action["action"] not in ["skill", "attack", "wait"]:
-            armor_result = {
-                "evaded": False,
-                "damage": 0,
-                "counter_damage": 0,
-                "reflect_damage": 0,
-                "hp_regen": 0,
-                "effect_text": ""
-            }
+        # ボス反撃
+        enemy_base_dmg = max(0, self.boss["atk"] + random.randint(-3, 3) - self.player["defense"])
+
+        # 防具効果を適用
+        armor_ability = equipment_bonus.get("armor_ability", "")
+        armor_result = game.apply_armor_effects(
+            enemy_base_dmg, 
+            armor_ability, 
+            self.player["hp"], 
+            self.player.get("max_hp", 50),
+            enemy_base_dmg,
+            self.boss.get("attribute", "none")
+        )
+
+        if armor_result["evaded"]:
+            text += f"\nボスの攻撃！ {armor_result['effect_text']}"
+        else:
+            enemy_dmg = armor_result["damage"]
+            self.player["hp"] -= enemy_dmg
+            self.player["hp"] = max(0, self.player["hp"])
+            text += f"\nボスの反撃！ {enemy_dmg} のダメージを受けた！"
+            if armor_result["effect_text"]:
+                text += f"\n{armor_result['effect_text']}"
 
             # 反撃ダメージ
             if armor_result["counter_damage"] > 0:
@@ -2198,42 +2122,10 @@ class BattleView(View):
                         await interaction.response.defer()
                         return
 
-                    # ==============================
-                    # 敵の行動決定（確率ベース）
-                    # ==============================
-                    enemy_action = game.get_monster_action(self.enemy["name"], is_boss=False)
-                    
-                    if enemy_action["action"] == "skill":
-                        # スキル使用
-                        skill = enemy_action["skill"]
-                        enemy_base_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
-                        enemy_dmg = game.calculate_skill_damage(enemy_base_dmg, skill)
-                        self.player["hp"] -= enemy_dmg
-                        self.player["hp"] = max(0, self.player["hp"])
-                        text += f"\n{self.enemy['name']}の**{skill['name']}**！ {enemy_dmg} のダメージを受けた！\n💭 _{skill['description']}_"
-                    
-                    elif enemy_action["action"] == "attack":
-                        # 通常攻撃
-                        enemy_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
-                        self.player["hp"] -= enemy_dmg
-                        self.player["hp"] = max(0, self.player["hp"])
-                        text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
-                    
-                    elif enemy_action["action"] == "wait":
-                        # 待機
-                        text += f"\n{self.enemy['name']}は様子を見ている…\n『チャンスだ！』"
-                    
-                    elif enemy_action["action"] == "flee":
-                        # 逃走
-                        text += f"\n{self.enemy['name']}は逃げ出した！\n🏆 敵を撃退した！"
-                        await db.update_player(interaction.user.id, hp=self.player["hp"])
-                        await self.update_embed(text)
-                        self.disable_all_items()
-                        await self.message.edit(view=self)
-                        if self.ctx.author.id in self.user_processing:
-                            self.user_processing[self.ctx.author.id] = False
-                        await interaction.response.defer()
-                        return
+                    enemy_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
+                    self.player["hp"] -= enemy_dmg
+                    self.player["hp"] = max(0, self.player["hp"])
+                    text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
 
                     if self.player["hp"] <= 0:
                         death_result = await handle_death_with_triggers(
@@ -2411,97 +2303,29 @@ class BattleView(View):
                     # ロックはasync withで自動解放される
                     return
 
-                # ==============================
-                # 敵の行動決定（確率ベース）
-                # ==============================
-                enemy_action = game.get_monster_action(self.enemy["name"], is_boss=False)
-                
-                if enemy_action["action"] == "skill":
-                    # スキル使用
-                    skill = enemy_action["skill"]
-                    enemy_base_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
-                    skill_dmg = game.calculate_skill_damage(enemy_base_dmg, skill)
-                    
-                    # 防具効果を適用
-                    armor_ability = equipment_bonus.get("armor_ability", "")
-                    armor_result = game.apply_armor_effects(
-                        skill_dmg, 
-                        armor_ability, 
-                        self.player["hp"], 
-                        self.player.get("max_hp", 50),
-                        skill_dmg,
-                        self.enemy.get("attribute", "none")
-                    )
-                    
-                    if armor_result["evaded"]:
-                        text += f"\n{self.enemy['name']}の**{skill['name']}**！ {armor_result['effect_text']}"
-                    else:
-                        enemy_dmg = armor_result["damage"]
-                        self.player["hp"] -= enemy_dmg
-                        self.player["hp"] = max(0, self.player["hp"])
-                        text += f"\n{self.enemy['name']}の**{skill['name']}**！ {enemy_dmg} のダメージを受けた！\n💭 _{skill['description']}_"
-                        if armor_result["effect_text"]:
-                            text += f"\n{armor_result['effect_text']}"
-                
-                elif enemy_action["action"] == "attack":
-                    # 通常攻撃
-                    enemy_base_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
-                    
-                    # 防具効果を適用
-                    armor_ability = equipment_bonus.get("armor_ability", "")
-                    armor_result = game.apply_armor_effects(
-                        enemy_base_dmg, 
-                        armor_ability, 
-                        self.player["hp"], 
-                        self.player.get("max_hp", 50),
-                        enemy_base_dmg,
-                        self.enemy.get("attribute", "none")
-                    )
-                    
-                    if armor_result["evaded"]:
-                        text += f"\n敵の攻撃！ {armor_result['effect_text']}"
-                    else:
-                        enemy_dmg = armor_result["damage"]
-                        self.player["hp"] -= enemy_dmg
-                        self.player["hp"] = max(0, self.player["hp"])
-                        text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
-                        if armor_result["effect_text"]:
-                            text += f"\n{armor_result['effect_text']}"
-                
-                elif enemy_action["action"] == "wait":
-                    # 待機
-                    text += f"\n{self.enemy['name']}は様子を見ている…\n『チャンスだ！』"
-                    armor_result = {
-                        "evaded": True,
-                        "damage": 0,
-                        "counter_damage": 0,
-                        "reflect_damage": 0,
-                        "hp_regen": 0,
-                        "effect_text": ""
-                    }
-                
-                elif enemy_action["action"] == "flee":
-                    # 逃走
-                    text += f"\n{self.enemy['name']}は逃げ出した！\n🏆 敵を撃退した！"
-                    # HPを保存
-                    await db.update_player(interaction.user.id, hp=self.player["hp"])
-                    await self.update_embed(text)
-                    self.disable_all_items()
-                    await self.message.edit(view=self)
-                    if self.ctx.author.id in self.user_processing:
-                        self.user_processing[self.ctx.author.id] = False
-                    return
-                
-                # armor_resultが定義されていない場合のデフォルト値
-                if enemy_action["action"] not in ["skill", "attack", "wait"]:
-                    armor_result = {
-                        "evaded": False,
-                        "damage": 0,
-                        "counter_damage": 0,
-                        "reflect_damage": 0,
-                        "hp_regen": 0,
-                        "effect_text": ""
-                    }
+                # 敵反撃
+                enemy_base_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
+
+                # 防具効果を適用
+                armor_ability = equipment_bonus.get("armor_ability", "")
+                armor_result = game.apply_armor_effects(
+                    enemy_base_dmg, 
+                    armor_ability, 
+                    self.player["hp"], 
+                    self.player.get("max_hp", 50),
+                    enemy_base_dmg,
+                    self.enemy.get("attribute", "none")
+                )
+
+                if armor_result["evaded"]:
+                    text += f"\n敵の攻撃！ {armor_result['effect_text']}"
+                else:
+                    enemy_dmg = armor_result["damage"]
+                    self.player["hp"] -= enemy_dmg
+                    self.player["hp"] = max(0, self.player["hp"])
+                    text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
+                    if armor_result["effect_text"]:
+                        text += f"\n{armor_result['effect_text']}"
 
                     # 反撃ダメージ
                     if armor_result["counter_damage"] > 0:
@@ -2919,7 +2743,32 @@ class BattleView(View):
 
                 text = f"✨ **{item_name}** を使用した！\nHP +{actual_heal} 回復！"
 
-            # 敵の反撃処理 (アイテム使用後)
+            # エリクサーの処理
+            else:
+                current_hp = self.player.get('hp', 50)
+                max_hp = self.player.get('max_hp', 50)
+                current_mp = self.player.get('mp', 20)
+                max_mp = self.player.get('max_mp', 20)
+                effect = item_info.get('effect', '')
+
+                if 'HPMPMAX' in effect:
+                    new_hp = max_hp
+                    new_mp = max_mp
+                else:
+                    heal = 30
+
+                
+                actual_heal = new_hp - current_hp
+                actual_mp_heal = new_mp - current_mp
+                self.player['hp'] = new_hp
+                self.player['mp'] = new_mp
+
+                await db.remove_item_from_inventory(self.ctx.author.id, item_name)
+                await db.update_player(self.ctx.author.id, hp=new_hp)
+                await db.update_player(self.ctx.author.id, mp=new_mp)
+
+                text = f"✨ **{item_name}** を使用した！\nHP +{actual_heal} 回復！\nMP +{actual_mp_heal} 回復！"
+            # 敵の反撃
             enemy_dmg = max(0, self.enemy["atk"] + random.randint(-3, 3) - self.player["defense"])
             self.player["hp"] -= enemy_dmg
             self.player["hp"] = max(0, self.player["hp"])
@@ -3633,3 +3482,313 @@ async def handle_death_with_triggers(ctx, user_id, user_processing, enemy_name=N
         await ctx.send(embed=embed)
 
     return death_result
+
+
+# ========================================
+# レイドボス戦闘View
+# ========================================
+
+class RaidBossView(View):
+    def __init__(self, user_id: int, boss_data: dict, raid_boss_db: dict, user_processing: dict):
+        super().__init__(timeout=60)
+        self.user_id = user_id
+        self.boss_data = boss_data
+        self.raid_boss_db = raid_boss_db
+        self.user_processing = user_processing
+        self.message = None
+
+    @button(label="攻撃する", style=discord.ButtonStyle.green)
+    async def attack_raid_boss(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
+            return
+
+        await interaction.response.defer()
+
+        player = await db.get_player(self.user_id)
+        if not player:
+            return
+
+        weapon_atk = 0
+        if player.get("equipped_weapon"):
+            weapon_info = game.get_item_info(player["equipped_weapon"])
+            weapon_atk = weapon_info.get("attack", 0) if weapon_info else 0
+
+        total_atk = player.get("atk", 0) + weapon_atk
+        damage = max(1, total_atk - self.boss_data.get("def", 0))
+
+        await db.update_raid_boss_hp(self.boss_data["id"], damage)
+        await db.add_raid_contribution(self.raid_boss_db["id"], self.user_id, damage)
+
+        updated_boss = await db.get_raid_boss(self.boss_data["id"])
+        current_hp = updated_boss.get("current_hp", 0)
+
+        if current_hp <= 0:
+            await self.handle_raid_boss_defeated(interaction)
+        else:
+            boss_atk = max(1, self.boss_data.get("atk", 10) - player.get("def", 0))
+            
+            new_hp = player.get("hp", 0) - boss_atk
+            await db.update_player(self.user_id, hp=max(0, new_hp))
+
+            embed = discord.Embed(
+                title=f"⚔️ レイドボス戦闘: {self.boss_data['name']}",
+                description=f"あなたは **{damage}ダメージ** を与えた！\n{self.boss_data['name']}から **{boss_atk}ダメージ** を受けた！",
+                color=discord.Color.orange()
+            )
+            embed.add_field(name="ボスHP", value=f"{current_hp}/{self.boss_data['hp']}", inline=True)
+            embed.add_field(name="あなたのHP", value=f"{max(0, new_hp)}/{player.get('max_hp', 50)}", inline=True)
+
+            await interaction.followup.send(embed=embed)
+
+            if new_hp <= 0:
+                await handle_death_with_triggers(
+                    interaction.channel,
+                    self.user_id,
+                    self.user_processing,
+                    enemy_name=self.boss_data["name"],
+                    enemy_type="raid_boss"
+                )
+
+                for child in self.children:
+                    child.disabled = True
+                if self.message:
+                    await self.message.edit(view=self)
+
+    @button(label="逃げる", style=discord.ButtonStyle.red)
+    async def flee_raid_boss(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
+            return
+
+        embed = discord.Embed(
+            title="💨 逃走",
+            description=f"{self.boss_data['name']}から逃げ出した！",
+            color=discord.Color.dark_grey()
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+
+        if self.user_id in self.user_processing:
+            self.user_processing[self.user_id] = False
+
+    async def handle_raid_boss_defeated(self, interaction: discord.Interaction):
+        await db.defeat_raid_boss(self.boss_data["id"])
+        
+        contributions = await db.get_raid_contributions(self.raid_boss_db["id"])
+        total_damage = sum(c.get("damage_dealt", 0) for c in contributions)
+
+        user_contribution = await db.get_user_raid_contribution(self.raid_boss_db["id"], self.user_id)
+        user_damage = user_contribution.get("damage_dealt", 0) if user_contribution else 0
+        contribution_ratio = user_damage / total_damage if total_damage > 0 else 0
+
+        rewards = []
+        gold_reward = 0
+
+        for reward in self.boss_data.get("rewards", []):
+            if reward["item"] == "coins":
+                base_gold = random.randint(reward["amount"][0], reward["amount"][1])
+                gold_reward = int(base_gold * (0.5 + contribution_ratio * 0.5))
+            else:
+                if random.random() < (contribution_ratio * 2):
+                    rewards.append(reward["item"])
+                    await db.add_item_to_inventory(self.user_id, reward["item"])
+
+        if gold_reward > 0:
+            await db.add_gold(self.user_id, gold_reward)
+
+        embed = discord.Embed(
+            title="🏆 レイドボス撃破！",
+            description=f"**{self.boss_data['name']}** を撃破した！\n\n貢献度: {int(contribution_ratio * 100)}%\n獲得報酬:",
+            color=discord.Color.gold()
+        )
+
+        reward_text = f"💰 {gold_reward}ゴールド\n"
+        if rewards:
+            reward_text += "\n".join([f"🎁 {item}" for item in rewards])
+        else:
+            reward_text += "（アイテムなし）"
+
+        embed.add_field(name="報酬", value=reward_text, inline=False)
+        
+        await interaction.followup.send(embed=embed)
+
+        try:
+            bot = interaction.client
+            log_channel = bot.get_channel(1424712515396305007)
+            if log_channel:
+                await log_channel.send(
+                    f"🏆 **レイドボス撃破！**\n"
+                    f"ボス: **{self.boss_data['name']}** ({self.boss_data['distance']}m)\n"
+                    f"撃破者: {interaction.user.mention}\n"
+                    f"参加者: {len(contributions)}人\n"
+                    f"24時間後に復活します"
+                )
+        except Exception as e:
+            print(f"レイドボス撃破ログエラー: {e}")
+
+        for child in self.children:
+            child.disabled = True
+        if self.message:
+            await self.message.edit(view=self)
+
+        if self.user_id in self.user_processing:
+            self.user_processing[self.user_id] = False
+
+
+# ========================================
+# 商人View
+# ========================================
+
+class MerchantView(View):
+    def __init__(self, user_id: int, user_processing: dict):
+        super().__init__(timeout=60)
+        self.user_id = user_id
+        self.user_processing = user_processing
+
+    @button(label="アイテムを買う", style=discord.ButtonStyle.green)
+    async def buy_items(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("これはあなたの商人です！", ephemeral=True)
+            return
+
+        inventory = await db.get_merchant_inventory(self.user_id)
+
+        if not inventory:
+            await interaction.response.send_message("商人の在庫がありません！", ephemeral=True)
+            return
+
+        embed = discord.Embed(
+            title="🛒 商人の在庫",
+            description="購入したいアイテムを選択してください。",
+            color=discord.Color.blue()
+        )
+
+        for item in inventory:
+            embed.add_field(
+                name=f"{item['slot_number']}. {item['item_name']}",
+                value=f"💰 {item['price']}G",
+                inline=False
+            )
+
+        await interaction.response.send_modal(MerchantBuyModal(self.user_id, inventory, self.user_processing))
+
+    @button(label="アイテムを売る", style=discord.ButtonStyle.blurple)
+    async def sell_items(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("これはあなたの商人です！", ephemeral=True)
+            return
+
+        await interaction.response.send_modal(MerchantSellModal(self.user_id, self.user_processing))
+
+    @button(label="立ち去る", style=discord.ButtonStyle.red)
+    async def leave_merchant(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("これはあなたの商人です！", ephemeral=True)
+            return
+
+        embed = discord.Embed(
+            title="👋 商人との別れ",
+            description="商人に別れを告げ、冒険を続けた。",
+            color=discord.Color.dark_grey()
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+
+        if self.user_id in self.user_processing:
+            self.user_processing[self.user_id] = False
+
+
+class MerchantBuyModal(discord.ui.Modal):
+    def __init__(self, user_id: int, inventory: list, user_processing: dict):
+        super().__init__(title="アイテムを購入")
+        self.user_id = user_id
+        self.inventory = inventory
+        self.user_processing = user_processing
+
+        self.slot_input = discord.ui.TextInput(
+            label="購入するアイテムの番号",
+            placeholder="1〜5の番号を入力",
+            max_length=1
+        )
+        self.add_item(self.slot_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            slot_number = int(self.slot_input.value)
+            if slot_number < 1 or slot_number > 5:
+                await interaction.response.send_message("1〜5の番号を入力してください！", ephemeral=True)
+                return
+        except ValueError:
+            await interaction.response.send_message("有効な番号を入力してください！", ephemeral=True)
+            return
+
+        item = next((i for i in self.inventory if i["slot_number"] == slot_number), None)
+
+        if not item:
+            await interaction.response.send_message("その番号のアイテムは存在しません！", ephemeral=True)
+            return
+
+        player = await db.get_player(self.user_id)
+        if player.get("gold", 0) < item["price"]:
+            await interaction.response.send_message(
+                f"ゴールドが足りません！（所持: {player.get('gold', 0)}G / 必要: {item['price']}G）",
+                ephemeral=True
+            )
+            return
+
+        await db.add_gold(self.user_id, -item["price"])
+        await db.add_item_to_inventory(self.user_id, item["item_name"])
+        await db.remove_merchant_item(self.user_id, slot_number)
+
+        embed = discord.Embed(
+            title="✅ 購入完了！",
+            description=f"**{item['item_name']}** を {item['price']}ゴールドで購入した！",
+            color=discord.Color.green()
+        )
+
+        await interaction.response.send_message(embed=embed)
+
+        if self.user_id in self.user_processing:
+            self.user_processing[self.user_id] = False
+
+
+class MerchantSellModal(discord.ui.Modal):
+    def __init__(self, user_id: int, user_processing: dict):
+        super().__init__(title="アイテムを売却")
+        self.user_id = user_id
+        self.user_processing = user_processing
+
+        self.item_input = discord.ui.TextInput(
+            label="売却するアイテム名",
+            placeholder="例: 鉄の剣",
+            max_length=50
+        )
+        self.add_item(self.item_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        item_name = self.item_input.value.strip()
+
+        player = await db.get_player(self.user_id)
+        inventory = player.get("inventory", [])
+
+        if item_name not in inventory:
+            await interaction.response.send_message(
+                f"**{item_name}** はインベントリにありません！",
+                ephemeral=True
+            )
+            return
+
+        sell_price = game.calculate_sell_price(item_name)
+
+        await db.remove_item_from_inventory(self.user_id, item_name)
+        await db.add_gold(self.user_id, sell_price)
+
+        embed = discord.Embed(
+            title="💰 売却完了！",
+            description=f"**{item_name}** を {sell_price}ゴールドで売却した！",
+            color=discord.Color.gold()
+        )
+
+        await interaction.response.send_message(embed=embed)
+
+        if self.user_id in self.user_processing:
+            self.user_processing[self.user_id] = False
