@@ -449,11 +449,11 @@ async def move(ctx: commands.Context):
                 view_delegated = True
                 return
 
-        # 優先度5: 通常イベント抽選（60%何もなし/30%敵/9%宝箱/1%トラップ宝箱/0.5%行商人）
+        # 優先度5: 通常イベント抽選（60%何もなし/30%敵/9%宝箱/1%トラップ宝箱）
         event_roll = random.random() * 100
         
         # 1% トラップ宝箱
-        elif event_roll < 1:
+        if event_roll < 1:
             embed = discord.Embed(
                 title="⚠️ 宝箱を見つけた！",
                 description="何か罠が仕掛けられているような気がする…\nどうする？",
