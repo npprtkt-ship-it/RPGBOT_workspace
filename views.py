@@ -6,6 +6,7 @@ import game
 from db import get_player, update_player, delete_player
 import death_system
 from titles import get_title_rarity_emoji, get_title_rarity_color
+import merchant_system
 # -------------------------
 # 名前入力View
 # -------------------------
@@ -706,7 +707,7 @@ class SpecialEventView(View):
         view = BlacksmithView(self.user_id, self.user_processing, materials)
         await interaction.edit_original_response(content=None, embed=view.get_embed(), view=view)
 
-    @button(label="💰 素材商人", style=discord.ButtonStyle.success)
+    @button(label="💰 行商人", style=discord.ButtonStyle.success)
     async def material_merchant_event(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("これはあなたのイベントではありません！", ephemeral=True)
@@ -724,27 +725,19 @@ class SpecialEventView(View):
             await interaction.edit_original_response(embed=embed, view=None)
             return
 
-        inventory = player.get("inventory", [])
-        materials = {}
-        for item in inventory:
-            if item in game.MATERIAL_PRICES:
-                materials[item] = materials.get(item, 0) + 1
-
-        if not materials:
-            embed = discord.Embed(
-                title="💰 素材商人",
-                description="「素材が何もないのか？もったいない…」\n\n他の選択肢を選んでください。",
-                color=discord.Color.orange()
-            )
-            for child in self.children:
-                if child.label == "💰 素材商人":
-                    child.disabled = True
-            await interaction.edit_original_response(embed=embed, view=self)
-            return
-
-        from views import MaterialMerchantView
-        view = MaterialMerchantView(self.user_id, self.user_processing, materials)
-        await interaction.edit_original_response(content=None, embed=view.get_embed(), view=view)
+        # merchant_system.pyのMerchantViewを使用
+        embed = discord.Embed(
+            title="💰 行商人との遭遇",
+            description="「よう、冒険者。良いものを揃えているぞ」\n\n商人が怪しげな笑みを浮かべている。",
+            color=discord.Color.gold()
+        )
+        
+        view = merchant_system.MerchantView(self.user_id, player)
+        await interaction.edit_original_response(embed=embed, view=view)
+        
+        # user_processing解除
+        if self.user_id in self.user_processing:
+            self.user_processing[self.user_id] = False
 
     @button(label="⚔️ レイドボス", style=discord.ButtonStyle.danger)
     async def raid_boss(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -1330,43 +1323,16 @@ class FinalBossBattleView(View):
             # HPを保存
             await db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
-    
-            # ✅ 修正: ボタンを再有効化
-            for child in self.children:
-                child.disabled = False
-            await self.message.edit(view=self)
-    
-            # ロックはasync withで自動解放される
+            await interaction.response.defer()
             return
 
         # 凍結効果で敵がスキップ
-        if ability_result.get("enemy_freeze", False):
-            text += "\nラスボスは凍りついて動けない！"
+        if ability_result.get("freeze", False):
+            text += "\nラスボスは凍結して動けない！"
             # HPを保存
             await db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
-
-            # ✅ 修正: ボタンを再有効化
-            for child in self.children:
-                child.disabled = False
-            await self.message.edit(view=self)
-    
-            # ロックはasync withで自動解放される
-            return
-
-        # 麻痺効果で敵がスキップ
-        if ability_result.get("paralyze", False):
-            text += "\nラスボスは麻痺して動けない！"
-            # HPを保存
-            await db.update_player(interaction.user.id, hp=self.player["hp"])
-            await self.update_embed(text)
-    
-            # ✅ 修正: ボタンを再有効化
-            for child in self.children:
-                child.disabled = False
-            await self.message.edit(view=self)
-    
-            # ロックはasync withで自動解放される
+            await interaction.response.defer()
             return
 
         # ラスボス反撃
@@ -1920,43 +1886,16 @@ class BossBattleView(View):
             # HPを保存
             await db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
-    
-            # ✅ 修正: ボタンを再有効化
-            for child in self.children:
-                child.disabled = False
-            await self.message.edit(view=self)
-    
-            # ロックはasync withで自動解放される
+            await interaction.response.defer()
             return
 
         # 凍結効果で敵がスキップ
-        if ability_result.get("enemy_freeze", False):
-            text += "\nボスは凍りついて動けない！"
+        if ability_result.get("freeze", False):
+            text += "\nボスは凍結して動けない！"
             # HPを保存
             await db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
-
-            # ✅ 修正: ボタンを再有効化
-            for child in self.children:
-                child.disabled = False
-            await self.message.edit(view=self)
-    
-            # ロックはasync withで自動解放される
-            return
-
-        # 麻痺効果で敵がスキップ
-        if ability_result.get("paralyze", False):
-            text += "\nボスは麻痺して動けない！"
-            # HPを保存
-            await db.update_player(interaction.user.id, hp=self.player["hp"])
-            await self.update_embed(text)
-    
-            # ✅ 修正: ボタンを再有効化
-            for child in self.children:
-                child.disabled = False
-            await self.message.edit(view=self)
-    
-            # ロックはasync withで自動解放される
+            await interaction.response.defer()
             return
 
         # ボス反撃
@@ -2484,50 +2423,23 @@ class BattleView(View):
                         # ロックはasync withで自動解放される
                     return
 
-                        # 怯み効果で敵がスキップ
+                # 怯み効果で敵がスキップ
                 if ability_result.get("enemy_flinch", False):
-                    text += "\n敵は怯んで動けない！"
+                    text += "\n敵は怯んで動けない！\n『よしっ！』"
                     # HPを保存
                     await db.update_player(interaction.user.id, hp=self.player["hp"])
                     await self.update_embed(text)
-    
-                    # ✅ 修正: ボタンを再有効化
-                    for child in self.children:
-                        child.disabled = False
-                    await self.message.edit(view=self)
-    
                     # ロックはasync withで自動解放される
                     return
 
                 # 凍結効果で敵がスキップ
-                if ability_result.get("enemy_freeze", False):
-                    text += "\n敵は凍りついて動けない！"
+                if ability_result.get("freeze", False):
+                    text += "\n敵は凍結して動けない！"
                     # HPを保存
                     await db.update_player(interaction.user.id, hp=self.player["hp"])
                     await self.update_embed(text)
-
-                    # ✅ 修正: ボタンを再有効化
-                    for child in self.children:
-                        child.disabled = False
-                    await self.message.edit(view=self)
-    
                     # ロックはasync withで自動解放される
                     return
-
-        # 麻痺効果で敵がスキップ
-        if ability_result.get("paralyze", False):
-            text += "\n敵は麻痺して動けない！"
-            # HPを保存
-            await db.update_player(interaction.user.id, hp=self.player["hp"])
-            await self.update_embed(text)
-    
-            # ✅ 修正: ボタンを再有効化
-            for child in self.children:
-                child.disabled = False
-            await self.message.edit(view=self)
-    
-            # ロックはasync withで自動解放される
-            return
 
                 # 敵反撃
                 enemy_base_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
@@ -3533,115 +3445,6 @@ class BlacksmithView(discord.ui.View):
 
     async def on_timeout(self):
         """タイムアウト時にuser_processingをクリア"""
-        if self.user_id in self.user_processing:
-            self.user_processing[self.user_id] = False
-
-class MaterialMerchantView(discord.ui.View):
-    """素材商人View - 素材を売却"""
-    def __init__(self, user_id: int, user_processing: dict, materials: dict):
-        super().__init__(timeout=60)
-        self.user_id = user_id
-        self.user_processing = user_processing
-        self.materials = materials
-
-        options = []
-        for material, count in materials.items():
-            price = game.MATERIAL_PRICES.get(material, 10)
-            total_price = price * count
-            options.append(discord.SelectOption(
-                label=f"{material} (x{count})",
-                description=f"単価: {price}G × {count}個 = {total_price}G",
-                value=material
-            ))
-
-        select = discord.ui.Select(
-            placeholder="売却する素材を選択",
-            options=options
-        )
-        select.callback = self.sell_callback
-        self.add_item(select)
-
-        sell_all_button = discord.ui.Button(label="全て売却", style=discord.ButtonStyle.success, emoji="💰")
-        sell_all_button.callback = self.sell_all_callback
-        self.add_item(sell_all_button)
-
-    def get_embed(self):
-        embed = discord.Embed(
-            title="💰 素材商人",
-            description="「素材を買い取るぞ。良い値で引き取ろう――」\n\n所持素材と買取価格:",
-            color=discord.Color.green()
-        )
-
-        total_value = 0
-        for material, count in self.materials.items():
-            price = game.MATERIAL_PRICES.get(material, 10)
-            total_price = price * count
-            total_value += total_price
-            embed.add_field(
-                name=f"{material} (x{count})",
-                value=f"{price}G × {count} = {total_price}G",
-                inline=False
-            )
-
-        embed.add_field(name="\n💎 全素材の合計価値", value=f"**{total_value}G**", inline=False)
-        embed.set_footer(text="下のメニューから売却する素材を選択してください")
-
-        return embed
-
-    async def sell_callback(self, interaction: discord.Interaction):
-        if interaction.user.id != self.user_id:
-            return await interaction.response.send_message("これはあなたの商人ではありません！", ephemeral=True)
-
-        material = interaction.data['values'][0]
-        count = self.materials[material]
-        price = game.MATERIAL_PRICES.get(material, 10)
-        total_price = price * count
-
-        for _ in range(count):
-            await db.remove_item_from_inventory(interaction.user.id, material)
-
-        await db.add_gold(interaction.user.id, total_price)
-
-        embed = discord.Embed(
-            title="✅ 売却完了！",
-            description=f"**{material}** を {count}個売却した！\n\n💰 {total_price}ゴールドを獲得！",
-            color=discord.Color.gold()
-        )
-
-        await interaction.response.edit_message(embed=embed, view=None)
-
-        if self.user_id in self.user_processing:
-            self.user_processing[self.user_id] = False
-
-    async def sell_all_callback(self, interaction: discord.Interaction):
-        if interaction.user.id != self.user_id:
-            return await interaction.response.send_message("これはあなたの商人ではありません！", ephemeral=True)
-
-        total_gold = 0
-        sold_items = []
-
-        for material, count in self.materials.items():
-            price = game.MATERIAL_PRICES.get(material, 10)
-            total_price = price * count
-            total_gold += total_price
-
-            for _ in range(count):
-                await db.remove_item_from_inventory(interaction.user.id, material)
-
-            sold_items.append(f"{material} x{count} = {total_price}G")
-
-        await db.add_gold(interaction.user.id, total_gold)
-
-        sold_text = "\n".join(sold_items)
-
-        embed = discord.Embed(
-            title="✅ 一括売却完了！",
-            description=f"全ての素材を売却した！\n\n{sold_text}\n\n💰 合計 {total_gold}ゴールドを獲得！",
-            color=discord.Color.gold()
-        )
-
-        await interaction.response.edit_message(embed=embed, view=None)
-
         if self.user_id in self.user_processing:
             self.user_processing[self.user_id] = False
 
