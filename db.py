@@ -278,12 +278,10 @@ async def get_upgrade_levels(user_id):
             "initial_hp": player.get("initial_hp_upgrade", 0),
             "initial_mp": player.get("initial_mp_upgrade", 0),
             "coin_gain": player.get("coin_gain_upgrade", 0),
-            "max_hp": player.get("max_hp_upgrade", 0),
-            "max_mp": player.get("max_mp_upgrade", 0),
             "atk": player.get("atk_upgrade", 0),
             "def_upgrade": player.get("def_upgrade", 0)
         }
-    return {"initial_hp": 0, "initial_mp": 0, "coin_gain": 0, "max_hp": 0, "max_mp": 0, "atk": 0, "def_upgrade": 0}
+    return {"initial_hp": 0, "initial_mp": 0, "coin_gain": 0, "atk": 0, "def_upgrade": 0}
 
 async def get_upgrade_cost(upgrade_type, user_id):
     """アップグレードタイプと現在のレベルに応じたコストを計算
@@ -294,10 +292,10 @@ async def get_upgrade_cost(upgrade_type, user_id):
     upgrades = await get_upgrade_levels(user_id)
     
     if upgrade_type == 1:  # HP
-        current_level = upgrades["max_hp"]
+        current_level = upgrades["initial_hp"]
         return 2 + (current_level * 1)
     elif upgrade_type == 2:  # MP
-        current_level = upgrades["max_mp"]
+        current_level = upgrades["initial_mp"]
         return 2 + (current_level * 1)
     elif upgrade_type == 3:  # コイン取得量
         current_level = upgrades["coin_gain"]
@@ -317,6 +315,7 @@ async def upgrade_initial_hp(user_id):
     if player:
         current_level = player.get("initial_hp_upgrade", 0)
         new_max_hp = player.get("max_hp", 50) + 5
+        new_hp = player.get("hp", 50) + 5
         await update_player(user_id, initial_hp_upgrade=current_level + 1, max_hp=new_max_hp)
         return True
     return False
@@ -327,6 +326,7 @@ async def upgrade_initial_mp(user_id):
     if player:
         current_level = player.get("initial_mp_upgrade", 0)
         new_max_mp = player.get("max_mp", 20) + 5
+        new_mp = player.get("mp", 20) + 5
         await update_player(user_id, initial_mp_upgrade=current_level + 1, max_mp=new_max_mp)
         return True
     return False
@@ -338,28 +338,6 @@ async def upgrade_coin_gain(user_id):
         current_level = player.get("coin_gain_upgrade", 0)
         new_multiplier = player.get("coin_multiplier", 1.0) + 0.1
         await update_player(user_id, coin_gain_upgrade=current_level + 1, coin_multiplier=new_multiplier)
-        return True
-    return False
-
-async def upgrade_max_hp(user_id):
-    """最大HP初期値をアップグレード（5PT で +5HP）"""
-    player = await get_player(user_id)
-    if player:
-        current_level = player.get("max_hp_upgrade", 0)
-        new_max_hp = player.get("max_hp", 50) + 5
-        new_hp = player.get("hp", 50) + 5
-        await update_player(user_id, max_hp_upgrade=current_level + 1, max_hp=new_max_hp, hp=new_hp)
-        return True
-    return False
-
-async def upgrade_max_mp(user_id):
-    """最大MP初期値をアップグレード（3PT で +5MP）"""
-    player = await get_player(user_id)
-    if player:
-        current_level = player.get("max_mp_upgrade", 0)
-        new_max_mp = player.get("max_mp", 20) + 5
-        new_mp = player.get("mp", 20) + 5
-        await update_player(user_id, max_mp_upgrade=current_level + 1, max_mp=new_max_mp, mp=new_mp)
         return True
     return False
 
@@ -661,8 +639,8 @@ async def check_and_unlock_distance_skills(user_id, distance):
         2000: "軽傷治癒",
         3000: "強攻撃",
         4000: "ファイアボール",
-        5000: "中治癒",
-        6000: "猛攻撃",
+        5000: "猛攻撃",
+        6000: "中治癒",
         7000: "爆炎",
         8000: "完全治癒",
         9000: "神速の一閃",
@@ -1034,253 +1012,63 @@ if _original_update_player and not getattr(_original_update_player, "_is_wrapped
 else:
     logger.debug("db.update_player wrapper: original_update_player not found or already wrapped.")
 
+# ==============================
+# デバッグコマンド用関数
+# ==============================
 
-# ========================================
-# レイドボスシステム
-# ========================================
-
-async def get_raid_boss(boss_id: str):
-    """レイドボスデータを取得"""
+async def get_all_players():
+    """全プレイヤーのリストを取得（管理者用）"""
     client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_bosses"
-    params = {"boss_id": f"eq.{boss_id}", "select": "*"}
+    url = f"{config.SUPABASE_URL}/rest/v1/players"
+    params = {"select": "*"}
     
-    response = await client.get(url, headers=_get_headers(), params=params)
-    response.raise_for_status()
-    
-    data = response.json()
-    return data[0] if data else None
-
-async def create_raid_boss(boss_id: str, boss_name: str, distance: int, max_hp: int):
-    """新しいレイドボスを作成"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_bosses"
-    
-    boss_data = {
-        "boss_id": boss_id,
-        "boss_name": boss_name,
-        "distance": distance,
-        "current_hp": max_hp,
-        "max_hp": max_hp,
-        "is_active": True
-    }
-    
-    response = await client.post(url, headers=_get_headers(), json=boss_data)
-    response.raise_for_status()
-    return response.json()
-
-async def update_raid_boss_hp(boss_id: str, damage: int):
-    """レイドボスにダメージを与える"""
-    boss = await get_raid_boss(boss_id)
-    if not boss:
-        return None
-    
-    new_hp = max(0, boss.get("current_hp", 0) - damage)
-    
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_bosses"
-    params = {"boss_id": f"eq.{boss_id}"}
-    
-    response = await client.patch(url, headers=_get_headers(), params=params, json={"current_hp": new_hp})
-    response.raise_for_status()
-    return response.json()
-
-async def defeat_raid_boss(boss_id: str):
-    """レイドボスを撃破状態にする（24時間後に復活）"""
-    from datetime import datetime, timedelta
-    
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_bosses"
-    params = {"boss_id": f"eq.{boss_id}"}
-    
-    now = datetime.utcnow()
-    respawn_time = now + timedelta(days=1)
-    
-    data = {
-        "is_active": False,
-        "defeated_at": now.isoformat(),
-        "respawn_at": respawn_time.isoformat()
-    }
-    
-    response = await client.patch(url, headers=_get_headers(), params=params, json=data)
-    response.raise_for_status()
-    return response.json()
-
-async def check_and_respawn_raid_bosses():
-    """復活時間が過ぎたレイドボスを復活させる"""
-    from datetime import datetime
-    
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_bosses"
-    params = {
-        "is_active": "eq.false",
-        "select": "*"
-    }
-    
-    response = await client.get(url, headers=_get_headers(), params=params)
-    response.raise_for_status()
-    
-    bosses = response.json()
-    now = datetime.utcnow()
-    
-    respawned = []
-    for boss in bosses:
-        respawn_at = boss.get("respawn_at")
-        if respawn_at:
-            respawn_time = datetime.fromisoformat(respawn_at.replace('Z', '+00:00'))
-            if now >= respawn_time:
-                # レイドボスを復活
-                update_url = f"{config.SUPABASE_URL}/rest/v1/raid_bosses"
-                update_params = {"id": f"eq.{boss['id']}"}
-                update_data = {
-                    "is_active": True,
-                    "current_hp": boss.get("max_hp"),
-                    "defeated_at": None,
-                    "respawn_at": None
-                }
-                
-                update_response = await client.patch(update_url, headers=_get_headers(), params=update_params, json=update_data)
-                update_response.raise_for_status()
-                
-                # 貢献度をリセット
-                await clear_raid_contributions(boss['id'])
-                
-                respawned.append(boss)
-    
-    return respawned
-
-async def add_raid_contribution(raid_boss_id: int, user_id: int, damage: int):
-    """レイドボスへの貢献度を追加"""
-    client = await get_client()
-    
-    # 既存の貢献度を確認
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_contributions"
-    params = {
-        "raid_boss_id": f"eq.{raid_boss_id}",
-        "user_id": f"eq.{str(user_id)}",
-        "select": "*"
-    }
-    
-    response = await client.get(url, headers=_get_headers(), params=params)
-    response.raise_for_status()
-    
-    existing = response.json()
-    
-    if existing:
-        # 既存の貢献度を更新
-        current_damage = existing[0].get("damage_dealt", 0)
-        new_damage = current_damage + damage
-        
-        update_params = {"id": f"eq.{existing[0]['id']}"}
-        update_response = await client.patch(url, headers=_get_headers(), params=update_params, json={"damage_dealt": new_damage})
-        update_response.raise_for_status()
-        return update_response.json()
-    else:
-        # 新規貢献度を作成
-        contribution_data = {
-            "raid_boss_id": raid_boss_id,
-            "user_id": str(user_id),
-            "damage_dealt": damage
-        }
-        
-        post_response = await client.post(url, headers=_get_headers(), json=contribution_data)
-        post_response.raise_for_status()
-        return post_response.json()
-
-async def get_raid_contributions(raid_boss_id: int):
-    """レイドボスの全貢献度を取得"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_contributions"
-    params = {
-        "raid_boss_id": f"eq.{raid_boss_id}",
-        "select": "*",
-        "order": "damage_dealt.desc"
-    }
-    
-    response = await client.get(url, headers=_get_headers(), params=params)
-    response.raise_for_status()
-    return response.json()
-
-async def get_user_raid_contribution(raid_boss_id: int, user_id: int):
-    """特定ユーザーの貢献度を取得"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_contributions"
-    params = {
-        "raid_boss_id": f"eq.{raid_boss_id}",
-        "user_id": f"eq.{str(user_id)}",
-        "select": "*"
-    }
-    
-    response = await client.get(url, headers=_get_headers(), params=params)
-    response.raise_for_status()
-    
-    data = response.json()
-    return data[0] if data else None
-
-async def clear_raid_contributions(raid_boss_id: int):
-    """レイドボスの貢献度をクリア（復活時）"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_contributions"
-    params = {"raid_boss_id": f"eq.{raid_boss_id}"}
-    
-    response = await client.delete(url, headers=_get_headers(), params=params)
-    response.raise_for_status()
-
-# ========================================
-# 商人システム
-# ========================================
-
-async def create_merchant_inventory(user_id: int, items: list):
-    """商人の在庫を作成（5個のアイテム）"""
-    # 既存の在庫を削除
-    await clear_merchant_inventory(user_id)
-    
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/merchant_inventories"
-    
-    for idx, item in enumerate(items):
-        item_data = {
-            "user_id": str(user_id),
-            "item_name": item["name"],
-            "item_type": item["type"],
-            "price": item["price"],
-            "slot_number": idx + 1
-        }
-        
-        response = await client.post(url, headers=_get_headers(), json=item_data)
+    try:
+        response = await client.get(url, headers=_get_headers(), params=params)
         response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        logger.error(f"Error getting all players: {e}")
+        return []
 
-async def get_merchant_inventory(user_id: int):
-    """商人の在庫を取得"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/merchant_inventories"
-    params = {
-        "user_id": f"eq.{str(user_id)}",
-        "select": "*",
-        "order": "slot_number.asc"
+async def ban_player(user_id):
+    """プレイヤーをBAN"""
+    await update_player(user_id, is_banned=True)
+    logger.warning(f"Player {user_id} has been banned")
+
+async def unban_player(user_id):
+    """プレイヤーのBANを解除"""
+    await update_player(user_id, is_banned=False)
+    logger.info(f"Player {user_id} has been unbanned")
+
+async def is_player_banned(user_id):
+    """プレイヤーがBANされているかチェック"""
+    player = await get_player(user_id)
+    if player:
+        return player.get("is_banned", False)
+    return False
+
+async def restore_player_snapshot(user_id, snapshot_data: dict):
+    """スナップショットからプレイヤーデータを復元"""
+    # スナップショットデータから復元する主要フィールド
+    restore_fields = {
+        "hp": snapshot_data.get("hp"),
+        "mp": snapshot_data.get("mp"),
+        "distance": snapshot_data.get("distance"),
+        "current_floor": snapshot_data.get("current_floor"),
+        "current_stage": snapshot_data.get("current_stage"),
+        "gold": snapshot_data.get("gold"),
+        "exp": snapshot_data.get("exp"),
+        "level": snapshot_data.get("level"),
+        "inventory": snapshot_data.get("inventory"),
+        "equipped_weapon": snapshot_data.get("equipped_weapon"),
+        "equipped_armor": snapshot_data.get("equipped_armor"),
     }
     
-    response = await client.get(url, headers=_get_headers(), params=params)
-    response.raise_for_status()
-    return response.json()
-
-async def clear_merchant_inventory(user_id: int):
-    """商人の在庫をクリア"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/merchant_inventories"
-    params = {"user_id": f"eq.{str(user_id)}"}
+    # Noneでないフィールドのみを更新
+    update_data = {k: v for k, v in restore_fields.items() if v is not None}
     
-    response = await client.delete(url, headers=_get_headers(), params=params)
-    response.raise_for_status()
-
-async def remove_merchant_item(user_id: int, slot_number: int):
-    """商人の在庫から特定のアイテムを削除"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/merchant_inventories"
-    params = {
-        "user_id": f"eq.{str(user_id)}",
-        "slot_number": f"eq.{slot_number}"
-    }
-    
-    response = await client.delete(url, headers=_get_headers(), params=params)
-    response.raise_for_status()
+    if update_data:
+        await update_player(user_id, **update_data)
+        logger.info(f"Restored snapshot for user {user_id}")
+    else:
+        logger.warning(f"No valid data to restore for user {user_id}")
