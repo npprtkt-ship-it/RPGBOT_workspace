@@ -746,8 +746,8 @@ class SpecialEventView(View):
         view = MaterialMerchantView(self.user_id, self.user_processing, materials)
         await interaction.edit_original_response(content=None, embed=view.get_embed(), view=view)
 
-    @button(label="👹 特殊な敵", style=discord.ButtonStyle.danger)
-    async def special_enemy(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @button(label="⚔️ レイドボス", style=discord.ButtonStyle.danger)
+    async def raid_boss(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("これはあなたのイベントではありません！", ephemeral=True)
             return
@@ -758,15 +758,31 @@ class SpecialEventView(View):
         if not player:
             return
 
-        special_enemies = [
-            {"name": "財宝の守護者", "hp": 200, "atk": 20, "def": 10, "gold_drop": (200, 500)},
-            {"name": "レアモンスター", "hp": 150, "atk": 25, "def": 8, "gold_drop": (300, 600)}
-        ]
-        enemy = random.choice(special_enemies)
+        # レイドボスデータを取得
+        import raid_boss_system
+        boss_data = raid_boss_system.get_raid_boss_data(self.distance)
+        
+        if not boss_data:
+            embed = discord.Embed(
+                title="⚠️ エラー",
+                description="この距離にはレイドボスは存在しません。",
+                color=discord.Color.red()
+            )
+            await interaction.edit_original_response(embed=embed, view=None)
+            return
+        
+        # レイドボス情報
+        enemy = {
+            "name": boss_data["name"],
+            "hp": boss_data["hp"],
+            "atk": boss_data["atk"],
+            "def": boss_data["def"],
+            "is_raid_boss": True
+        }
 
         embed = discord.Embed(
-            title="👹 特殊な敵が現れた！",
-            description=f"**{enemy['name']}** が立ちはだかる！\n通常の敵より強力だが、報酬も豪華だ！",
+            title="⚔️ レイドボスが現れた！",
+            description=f"**{enemy['name']}** が立ちはだかる！\n\n強大な力を持つレイドボス！\nHPは継続し、全プレイヤーで協力して討伐しよう！",
             color=discord.Color.dark_red()
         )
         await interaction.message.edit(embed=embed, view=None)
@@ -775,8 +791,9 @@ class SpecialEventView(View):
 
         player_data = {
             "hp": player.get("hp", 50),
-            "attack": player.get("attack", 5),
-            "defense": player.get("defense", 2),
+            "mp": player.get("mp", 20),
+            "attack": player.get("atk", 5),
+            "defense": player.get("def", 2),
             "inventory": player.get("inventory", []),
             "distance": self.distance,
             "user_id": interaction.user.id

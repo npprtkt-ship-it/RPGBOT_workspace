@@ -449,11 +449,26 @@ async def move(ctx: commands.Context):
                 view_delegated = True
                 return
 
-        # 優先度5: 通常イベント抽選（60%何もなし/30%敵/9%宝箱/1%トラップ宝箱）
+        # 優先度5: 通常イベント抽選（60%何もなし/30%敵/9%宝箱/1%トラップ宝箱/0.5%行商人）
         event_roll = random.random() * 100
 
+        # 0.5% 行商人イベント
+        if event_roll < 0.5:
+            embed = discord.Embed(
+                title="🏪 旅の商人に遭遇！",
+                description="旅の商人:「いらっしゃい！良いものを揃えているよ」\n\nアイテムの購入・売却ができます。",
+                color=discord.Color.gold()
+            )
+            embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
+            
+            import merchant_system
+            view = merchant_system.MerchantView(user.id, player)
+            await exploring_msg.edit(content=None, embed=embed, view=view)
+            view_delegated = True
+            return
+        
         # 1% トラップ宝箱
-        if event_roll < 1:
+        elif event_roll < 1.5:
             embed = discord.Embed(
                 title="⚠️ 宝箱を見つけた！",
                 description="何か罠が仕掛けられているような気がする…\nどうする？",
@@ -465,8 +480,8 @@ async def move(ctx: commands.Context):
             view_delegated = True
             return
 
-        # 9% 宝箱（1～10%）
-        elif event_roll < 10:
+        # 9% 宝箱（1.5～10.5%）
+        elif event_roll < 10.5:
             embed = discord.Embed(
                 title="⚠️ 宝箱を見つけた！",
                 description="何か罠が仕掛けられているような気がする…\nどうする？",
@@ -477,8 +492,8 @@ async def move(ctx: commands.Context):
             await exploring_msg.edit(content=None, embed=embed, view=view)
             view_delegated = True
             return
-        # 30% 敵との遭遇（10～40%）
-        elif event_roll < 40:
+        # 30% 敵との遭遇（10.5～40.5%）
+        elif event_roll < 40.5:
             # game.pyから距離に応じた敵を取得
             enemy = game.get_random_enemy(total_distance)
 
