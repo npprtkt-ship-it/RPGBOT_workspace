@@ -207,7 +207,7 @@ ENEMY_ZONES = {
                 "atk": 3,
                 "def": 2,
                 "attribute": "none",
-                "weight": 40,
+                "weight": 32,
                 "exp": 8,
                 "drops": [
                     {"item": "none", "weight": 60},
@@ -220,11 +220,11 @@ ENEMY_ZONES = {
             },
             {
                 "name": "ゴブリン",
-                "hp": 15,
+                "hp": 16,
                 "atk": 4,
                 "def": 2,
                 "attribute": "none",
-                "weight": 40,
+                "weight": 28,
                 "exp": 12,
                 "drops": [
                     {"item": "none", "weight": 60},
@@ -237,11 +237,11 @@ ENEMY_ZONES = {
             },
             {
                 "name": "コウモリ",
-                "hp": 15,
-                "atk": 4,
+                "hp": 12,
+                "atk": 5,
                 "def": 1,
                 "attribute": "none",
-                "weight": 40,
+                "weight": 24,
                 "exp": 12,
                 "drops": [
                     {"item": "none", "weight": 60},
@@ -258,7 +258,7 @@ ENEMY_ZONES = {
                 "atk": 5,
                 "def": 2,
                 "attribute": "none",
-                "weight": 20,
+                "weight": 15,
                 "exp": 20,
                 "drops": [
                     {"item": "none", "weight": 40},
@@ -293,12 +293,48 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "ゾンビ",
-                "hp": ,
-                "atk": ,
-                "def": ,
+                "hp": 40,
+                "atk": 8,
+                "def": 3,
                 "attribute": "",
-                "weight": ,
+                "weight": 32,
+                "exp": 20,
+                "drops": [
+                    {"item": "none", "weight": 60},
+                ]
+            },
+            {
+                "name": "スケルトン",
+                "hp": 35,
+                "atk": 9,
+                "def": 3,
+                "attribute": "",
+                "weight": 28,
                 "exp": ,
+                "drops": [
+                    {"item": "none", "weight": 60},
+                ]
+            },
+            {
+                "name": "ミイラ",
+                "hp": 28,
+                "atk": 8,
+                "def": 4,
+                "attribute": "",
+                "weight": 24,
+                "exp": ,
+                "drops": [
+                    {"item": "none", "weight": 60},
+                ]
+            },
+            {
+                "name": "サンドガーディアン",
+                "hp": 50,
+                "atk": 10,
+                "def": 5,
+                "attribute": "",
+                "weight": 15,
+                "exp": 30,
                 "drops": [
                     {"item": "none", "weight": 60},
                 ]
@@ -309,43 +345,7 @@ ENEMY_ZONES = {
                 "atk": ,
                 "def": ,
                 "attribute": "",
-                "weight": ,
-                "exp": ,
-                "drops": [
-                    {"item": "none", "weight": 60},
-                ]
-            },
-            {
-                "name": "",
-                "hp": ,
-                "atk": ,
-                "def": ,
-                "attribute": "",
-                "weight": ,
-                "exp": ,
-                "drops": [
-                    {"item": "none", "weight": 60},
-                ]
-            },
-            {
-                "name": "",
-                "hp": ,
-                "atk": ,
-                "def": ,
-                "attribute": "",
-                "weight": ,
-                "exp": ,
-                "drops": [
-                    {"item": "none", "weight": 60},
-                ]
-            },
-            {
-                "name": "",
-                "hp": ,
-                "atk": ,
-                "def": ,
-                "attribute": "",
-                "weight": ,
+                "weight": 1,
                 "exp": ,
                 "drops": [
                     {"item": "none", "weight": 60},
