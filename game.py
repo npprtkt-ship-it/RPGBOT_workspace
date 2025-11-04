@@ -96,11 +96,11 @@ ITEMS_DATABASE = {
         "ability": "全ステータス+50%, 攻撃時50%で防御無視",
         "description": "黄金に輝く剣。第1ステージ「始まりの洞窟」の激レア武器。",
     },
-    "王者の剣": {
+    "岩石の剣": {
         "type": "weapon",
         "attack": 8,
-        "ability": "全ステータス+20%、全状態異常耐性+50%",
-        "description": "遥か昔に造られた剣。刀身の輝きは未だ失われていない。",
+        "ability": "ダメージ+30%, 攻撃時50%で防御無視",
+        "description": "洞窟の主-ストーンスネーク-の鱗に深く突き立てられ長い年月が経ち、刀身が鱗と同化した剣。",
         
     },
 
@@ -263,7 +263,7 @@ ENEMY_ZONES = {
                 "drops": [
                     {"item": "none", "weight": 40},
                     {"item": "蜘蛛の糸", "weight": 25},
-                    {"item": "毒の短剣", "weight": 5},
+                    {"item": "毒針", "weight": 5},
                     {"item": "HP回復薬（小）", "weight": 10},
                     {"item": "coins", "amount": [30, 50], "weight": 20}
                 ]
@@ -295,7 +295,7 @@ ENEMY_ZONES = {
                 "name": "ゾンビ",
                 "hp": 40,
                 "atk": 8,
-                "def": 3,
+                "def": 4,
                 "attribute": "",
                 "weight": 32,
                 "exp": 20,
@@ -307,7 +307,7 @@ ENEMY_ZONES = {
                 "name": "スケルトン",
                 "hp": 35,
                 "atk": 9,
-                "def": 3,
+                "def": 4,
                 "attribute": "",
                 "weight": 28,
                 "exp": ,
@@ -319,7 +319,7 @@ ENEMY_ZONES = {
                 "name": "ミイラ",
                 "hp": 28,
                 "atk": 8,
-                "def": 4,
+                "def": 5,
                 "attribute": "",
                 "weight": 24,
                 "exp": ,
@@ -328,10 +328,10 @@ ENEMY_ZONES = {
                 ]
             },
             {
-                "name": "サンドガーディアン",
+                "name": "ゴーレム",
                 "hp": 50,
                 "atk": 10,
-                "def": 5,
+                "def": 7,
                 "attribute": "",
                 "weight": 15,
                 "exp": 30,
@@ -1003,20 +1003,20 @@ def get_enemy_gold_drop(enemy_name, distance):
 
 BOSS_DATA = {
     1: {
-        "name": "スライムキング",
-        "hp": 100,
-        "atk": 10,
-        "def": 3,
+        "name": "ストーンスネーク",
+        "hp": 80,
+        "atk": 9,
+        "def": 6,
         "attribute": "none",
                 "attribute": "none",
         "drops": [
-            {"item": "王者の剣", "weight": 15},
-            {"item": "スライムの王冠", "weight": 15},
+            {"item": "岩石の鱗", "weight": 30},
+            {"item": "岩石の剣", "weight": 10},
             {"item": "HP回復薬（小）", "weight": 10},
-            {"item": "HP回復薬（中）", "weight": 10},
+            {"item": "HP回復薬（中）", "weight": 5},
             {"item": "MP回復薬（小）", "weight": 10},
-            {"item": "MP回復薬（中）", "weight": 10},
-            {"item": "coins", "amount": [100, 150], "weight": 30}
+            {"item": "MP回復薬（中）", "weight": 5},
+            {"item": "coins", "amount": [40, 60], "weight": 30}
         ]
     },
     2: {
